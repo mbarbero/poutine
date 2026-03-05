@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/boostsecurityio/poutine/models"
@@ -11,8 +10,8 @@ import (
 )
 
 func TestErrViolationsFound(t *testing.T) {
-	assert.EqualError(t, ErrViolationsFound, "poutine: violations found")
-	assert.True(t, errors.Is(ErrViolationsFound, ErrViolationsFound))
+	require.EqualError(t, ErrViolationsFound, "poutine: violations found")
+	assert.ErrorIs(t, ErrViolationsFound, ErrViolationsFound)
 }
 
 func TestExitCodeViolations(t *testing.T) {
