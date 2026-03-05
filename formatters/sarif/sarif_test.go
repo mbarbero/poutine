@@ -13,13 +13,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestSarifFormatBuildDependencyFindings validates that findings whose purl matches a build
-// dependency (not a package dependency) are included in the SARIF output. This covers rules
-// like github_action_from_unverified_creator_used where the finding purl is an action repo.
+// TestSarifFormatBuildDependencyFindings validates that findings are included in the SARIF
+// output and that the resulting SARIF result has a populated location (uri and startLine).
+// This covers rules like github_action_from_unverified_creator_used that create per-step
+// findings with path and line information.
 func TestSarifFormatBuildDependencyFindings(t *testing.T) {
 	actionPurl := "pkg:githubactions/unverified-owner/some-action"
+	pkgPurl := "pkg:github/test/repo@main"
 	pkg := &models.PackageInsights{
-		Purl:          "pkg:github/test/repo@main",
+		Purl:          pkgPurl,
 		SourceGitRepo: "test/repo",
 		SourceGitRef:  "main",
 		SourceScmType: "github",
@@ -29,12 +31,14 @@ func TestSarifFormatBuildDependencyFindings(t *testing.T) {
 			Findings: []results.Finding{
 				{
 					RuleId: "github_action_from_unverified_creator_used",
-					// The finding purl is the action repo purl WITHOUT version (as set by the rego rule)
-					Purl: actionPurl,
+					// The finding purl is now the package purl (as produced by the rego rule)
+					Purl: pkgPurl,
 					Meta: results.FindingMeta{
 						Path:    ".github/workflows/ci.yml",
 						Line:    5,
-						Details: "Used in 1 repo(s)",
+						Job:     "build",
+						Step:    "2",
+						Details: "unverified-owner/some-action@v1.0",
 					},
 				},
 			},
@@ -68,11 +72,34 @@ func TestSarifFormatBuildDependencyFindings(t *testing.T) {
 	// The finding should appear in the results
 	sarifResults, ok := run["results"].([]interface{})
 	require.True(t, ok, "results should be present in the SARIF run")
-	require.Len(t, sarifResults, 1, "finding from build dependency should appear in SARIF output")
+	require.Len(t, sarifResults, 1, "finding should appear in SARIF output")
 
 	result, ok := sarifResults[0].(map[string]interface{})
 	require.True(t, ok)
 	require.Equal(t, "github_action_from_unverified_creator_used", result["ruleId"])
+
+	// Validate that the location has a non-empty URI and a meaningful line number
+	locations, ok := result["locations"].([]interface{})
+	require.True(t, ok, "locations should be present")
+	require.Len(t, locations, 1)
+
+	location, ok := locations[0].(map[string]interface{})
+	require.True(t, ok)
+
+	physicalLocation, ok := location["physicalLocation"].(map[string]interface{})
+	require.True(t, ok)
+
+	artifactLocation, ok := physicalLocation["artifactLocation"].(map[string]interface{})
+	require.True(t, ok)
+	uri, ok := artifactLocation["uri"].(string)
+	require.True(t, ok, "uri should be a string")
+	require.Equal(t, ".github/workflows/ci.yml", uri, "uri should be the workflow file path")
+
+	region, ok := physicalLocation["region"].(map[string]interface{})
+	require.True(t, ok)
+	startLine, ok := region["startLine"].(float64)
+	require.True(t, ok, "startLine should be a number")
+	require.InDelta(t, float64(5), startLine, 0.0001, "startLine should match the finding line")
 }
 
 func TestSarifFormat(t *testing.T) {
