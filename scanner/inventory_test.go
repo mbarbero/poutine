@@ -781,6 +781,42 @@ func TestRulesConfig(t *testing.T) {
 	assert.Empty(t, labels)
 }
 
+// TestKnownVulnerabilityInBuildPlatformFinding validates that findings from the
+// known_vulnerability_in_build_platform rule use pkg.purl as the finding purl (not
+// input.provider), so they are not silently dropped from SARIF output.
+func TestKnownVulnerabilityInBuildPlatformFinding(t *testing.T) {
+	o, _ := opa.NewOpa(context.TODO(), &models.Config{
+		Include: []models.ConfigInclude{},
+	})
+	// provider="gitlab", version="17.3.0" matches advisory PVE-2024-00001 (>=17.3, <17.3.3)
+	i := NewInventory(o, nil, "gitlab", "17.3.0")
+	purl := "pkg:github/org/owner"
+	pkg := &models.PackageInsights{
+		Purl:          purl,
+		SourceGitRepo: "org/owner",
+		SourceGitRef:  "main",
+	}
+	_ = pkg.NormalizePurl()
+
+	scannedPackage, err := i.ScanPackage(context.Background(), *pkg, "testdata")
+	require.NoError(t, err)
+
+	var platformFinding *results.Finding
+	for idx, f := range scannedPackage.FindingsResults.Findings {
+		if f.RuleId == "known_vulnerability_in_build_platform" {
+			platformFinding = &scannedPackage.FindingsResults.Findings[idx]
+			break
+		}
+	}
+
+	require.NotNil(t, platformFinding, "expected a known_vulnerability_in_build_platform finding")
+	// The finding purl must be pkg.purl (not input.provider like "gitlab"), so it
+	// is not dropped from SARIF output by the formatter's purl-based lookup.
+	assert.Equal(t, purl, platformFinding.Purl, "finding purl should be pkg.purl, not the provider string")
+	assert.NotEmpty(t, platformFinding.Meta.OsvId, "osv_id should be populated")
+	assert.NotEmpty(t, platformFinding.Meta.Details, "details should be populated")
+}
+
 func TestStructuredFindingFields(t *testing.T) {
 	o, _ := opa.NewOpa(context.TODO(), &models.Config{
 		Include: []models.ConfigInclude{},
