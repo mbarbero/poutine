@@ -733,6 +733,56 @@ func TestSkipRule(t *testing.T) {
 	assert.NotContains(t, rule_ids, rule_id)
 }
 
+func TestSkipRuleByActionPurl(t *testing.T) {
+	o, _ := opa.NewOpa(context.TODO(), &models.Config{
+		Include: []models.ConfigInclude{},
+	})
+	i := NewInventory(o, nil, "", "")
+	ctx := context.TODO()
+	purl := "pkg:github/org/owner"
+	rule_id := "github_action_from_unverified_creator_used"
+	pkg := &models.PackageInsights{
+		Purl:          purl,
+		SourceGitRepo: "org/owner",
+		SourceGitRef:  "main",
+	}
+	_ = pkg.NormalizePurl()
+
+	updatedPkg, err := i.ScanPackage(ctx, *pkg, "testdata")
+	assert.NoError(t, err)
+
+	// Collect findings for the unverified creator rule
+	var unverifiedFindings []results.Finding
+	for _, f := range updatedPkg.FindingsResults.Findings {
+		if f.RuleId == rule_id {
+			unverifiedFindings = append(unverifiedFindings, f)
+		}
+	}
+	require.NotEmpty(t, unverifiedFindings, "expected unverified creator findings before skip")
+
+	// Skip one specific action purl (kartverket/github-workflows)
+	err = o.WithConfig(ctx, &models.Config{
+		Skip: []models.ConfigSkip{
+			{
+				Rule: []string{rule_id},
+				Purl: []string{"pkg:githubactions/kartverket/github-workflows"},
+			},
+		},
+	})
+	assert.NoError(t, err)
+
+	secondUpdatedPkg, err := i.ScanPackage(context.Background(), *pkg, "testdata")
+	assert.NoError(t, err)
+
+	// Verify that all kartverket findings are skipped
+	for _, f := range secondUpdatedPkg.FindingsResults.Findings {
+		if f.RuleId == rule_id {
+			assert.NotContains(t, f.Meta.Details, "kartverket/github-workflows",
+				"findings for skipped action purl should be removed")
+		}
+	}
+}
+
 func TestRulesConfig(t *testing.T) {
 	o, _ := opa.NewOpa(context.TODO(), &models.Config{
 		Include: []models.ConfigInclude{},

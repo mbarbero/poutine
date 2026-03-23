@@ -13,7 +13,7 @@ skip(f) if {
 			"rule": f.rule_id,
 			"level": rules_by_id[rule_id].level,
 		},
-		object.filter(f.meta, {"osv_id", "job", "path"}),
+		object.filter(f.meta, {"osv_id", "job", "path", "purl"}),
 	)
 
 	count(s) > 0
