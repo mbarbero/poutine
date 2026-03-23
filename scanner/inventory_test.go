@@ -24,7 +24,7 @@ func TestPurls(t *testing.T) {
 	}
 	_ = pkg.NormalizePurl()
 	scannedPackage, err := i.ScanPackage(context.Background(), *pkg, "testdata")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	purls := []string{
 		"pkg:docker/node%3Alatest",
@@ -74,7 +74,7 @@ func TestFindings(t *testing.T) {
 	_ = pkg.NormalizePurl()
 
 	scannedPackage, err := i.ScanPackage(context.Background(), *pkg, "testdata")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	analysisResults := scannedPackage.FindingsResults
 
@@ -700,7 +700,7 @@ func TestSkipRule(t *testing.T) {
 	_ = pkg.NormalizePurl()
 
 	updatedPkg, err := i.ScanPackage(ctx, *pkg, "testdata")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	analysisResults := updatedPkg.FindingsResults
 
@@ -718,10 +718,10 @@ func TestSkipRule(t *testing.T) {
 			},
 		},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	secondUpdatedPkg, err := i.ScanPackage(context.Background(), *pkg, "testdata")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	analysisResults = secondUpdatedPkg.FindingsResults
 
@@ -749,7 +749,7 @@ func TestSkipRuleByActionPurl(t *testing.T) {
 	_ = pkg.NormalizePurl()
 
 	updatedPkg, err := i.ScanPackage(ctx, *pkg, "testdata")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Collect findings for the unverified creator rule
 	var unverifiedFindings []results.Finding
@@ -769,10 +769,10 @@ func TestSkipRuleByActionPurl(t *testing.T) {
 			},
 		},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	secondUpdatedPkg, err := i.ScanPackage(context.Background(), *pkg, "testdata")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	for _, f := range secondUpdatedPkg.FindingsResults.Findings {
 		if f.RuleId == rule_id {
@@ -790,10 +790,10 @@ func TestSkipRuleByActionPurl(t *testing.T) {
 			},
 		},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	thirdUpdatedPkg, err := i.ScanPackage(context.Background(), *pkg, "testdata")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var remainingDetails []string
 	for _, f := range thirdUpdatedPkg.FindingsResults.Findings {
@@ -830,7 +830,7 @@ func TestRulesConfig(t *testing.T) {
 	_ = pkg.NormalizePurl()
 
 	scannedPackage, err := i.ScanPackage(ctx, *pkg, "testdata")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	labels := []string{}
 	for _, f := range scannedPackage.FindingsResults.Findings {
@@ -847,10 +847,10 @@ func TestRulesConfig(t *testing.T) {
 			},
 		},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	reScannedPackage, err := i.ScanPackage(ctx, *pkg, "testdata")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	labels = []string{}
 	for _, f := range reScannedPackage.FindingsResults.Findings {
