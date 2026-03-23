@@ -760,7 +760,7 @@ func TestSkipRuleByActionPurl(t *testing.T) {
 	}
 	require.NotEmpty(t, unverifiedFindings, "expected unverified creator findings before skip")
 
-	// Skip one specific action purl (kartverket/github-workflows)
+	// Test 1: Versionless skip should match ALL versions of kartverket/github-workflows
 	err = o.WithConfig(ctx, &models.Config{
 		Skip: []models.ConfigSkip{
 			{
@@ -774,13 +774,43 @@ func TestSkipRuleByActionPurl(t *testing.T) {
 	secondUpdatedPkg, err := i.ScanPackage(context.Background(), *pkg, "testdata")
 	assert.NoError(t, err)
 
-	// Verify that all kartverket findings are skipped
 	for _, f := range secondUpdatedPkg.FindingsResults.Findings {
 		if f.RuleId == rule_id {
 			assert.NotContains(t, f.Meta.Details, "kartverket/github-workflows",
-				"findings for skipped action purl should be removed")
+				"versionless skip should remove all versions of kartverket/github-workflows")
 		}
 	}
+
+	// Test 2: Version-specific skip should only match that exact version
+	err = o.WithConfig(ctx, &models.Config{
+		Skip: []models.ConfigSkip{
+			{
+				Rule: []string{rule_id},
+				Purl: []string{"pkg:githubactions/kartverket/github-workflows@v2.7.1"},
+			},
+		},
+	})
+	assert.NoError(t, err)
+
+	thirdUpdatedPkg, err := i.ScanPackage(context.Background(), *pkg, "testdata")
+	assert.NoError(t, err)
+
+	var remainingDetails []string
+	for _, f := range thirdUpdatedPkg.FindingsResults.Findings {
+		if f.RuleId == rule_id {
+			remainingDetails = append(remainingDetails, f.Meta.Details)
+		}
+	}
+	// v2.7.1 should be skipped, but @main and @v2.2 should remain
+	for _, d := range remainingDetails {
+		assert.NotContains(t, d, "@v2.7.1",
+			"version-specific skip should remove only that version")
+	}
+	// Verify other versions are still present
+	assert.Contains(t, remainingDetails, "kartverket/github-workflows/.github/workflows/run-terraform.yml@main",
+		"@main should not be skipped by version-specific skip")
+	assert.Contains(t, remainingDetails, "kartverket/github-workflows/.github/workflows/run-terraform.yml@v2.2",
+		"@v2.2 should not be skipped by version-specific skip")
 }
 
 func TestRulesConfig(t *testing.T) {

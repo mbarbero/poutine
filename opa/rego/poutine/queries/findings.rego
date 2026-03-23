@@ -5,6 +5,25 @@ import rego.v1
 
 rules_by_id[id] = rules[id].rule
 
+_purl_match(finding_purl, skip_purl) if {
+	finding_purl == skip_purl
+}
+
+_purl_match(finding_purl, skip_purl) if {
+	startswith(finding_purl, skip_purl)
+	rest := substring(finding_purl, count(skip_purl), -1)
+	regex.match("^[@#]", rest)
+}
+
+_skip_purl(_, s) if {
+	not s.purl
+}
+
+_skip_purl(o, s) if {
+	skip_purl := s.purl[_]
+	_purl_match(o.purl, skip_purl)
+}
+
 skip(f) if {
 	s := data.config.skip[_]
 	o := object.union(
@@ -17,7 +36,8 @@ skip(f) if {
 	)
 
 	count(s) > 0
-	[attr | s[attr]; not o[attr] in s[attr]] == []
+	[attr | s[attr]; attr != "purl"; not o[attr] in s[attr]] == []
+	_skip_purl(o, s)
 }
 
 skip(f) if {
