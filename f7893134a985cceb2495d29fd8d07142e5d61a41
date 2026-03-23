@@ -1,0 +1,13 @@
+opa/rego/rules/github_action_from_unverified_creator_used.rego
+  495370f5d8b8bc33 26,43
+opa/rego/poutine/queries/findings.rego
+  495370f5d8b8bc33 8-30,39,43-44
+scanner/inventory_test.go
+  495370f5d8b8bc33 27,77,703,721,724,736-815,833,850,853
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "f7893134a985cceb2495d29fd8d07142e5d61a41",
+  "prompts": {}
+}
