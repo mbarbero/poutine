@@ -9,12 +9,16 @@ _purl_match(finding_purl, skip_purl) if {
 	finding_purl == skip_purl
 }
 
+# Prefix match with structural purl boundary: ensures that e.g.
+# "pkg:githubactions/foo/bar" matches "pkg:githubactions/foo/bar@v1"
+# (boundary is @) but not "pkg:githubactions/foo/bar-baz@v1".
 _purl_match(finding_purl, skip_purl) if {
 	startswith(finding_purl, skip_purl)
 	rest := substring(finding_purl, count(skip_purl), -1)
 	regex.match("^[@#]", rest)
 }
 
+# No purl constraint in skip rule: purl matches by default.
 _skip_purl(_, s) if {
 	not s.purl
 }
